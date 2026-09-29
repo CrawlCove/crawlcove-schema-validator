@@ -78,6 +78,8 @@ Recommended-property warnings are raised only for top-level nodes, the entities 
 
 This validates one page. [Crawl Cove](https://crawlcove.com/?utm_source=github&utm_medium=crawlcove-schema-validator), the desktop SEO crawler for Windows and Mac, runs the same schema-validity check across a whole-site crawl, reports every page that should carry structured data and doesn't, and tracks both over time.
 
+This repo has its own page on crawlcove.com: [Crawl Cove schema validator CLI](https://crawlcove.com/open-source/crawlcove-schema-validator?utm_source=github&utm_medium=crawlcove-schema-validator).
+
 ## Related tools
 
 - [crawlcove-js](https://github.com/CrawlCove/crawlcove-js) — `crawlcove-export`, a typed JavaScript/TypeScript library to load, query and convert Crawl Cove exports.
