@@ -1,0 +1,47 @@
+{
+  "name": "crawlcove-schema-validator",
+  "version": "1.0.0",
+  "description": "Schema.org / JSON-LD validator CLI: extract every JSON-LD block from a page, parse it, and check the properties Google's rich results require for Article, Product, FAQPage, BreadcrumbList, LocalBusiness, Event, Recipe, JobPosting and more.",
+  "type": "module",
+  "bin": {
+    "schema-validator": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "seo",
+    "schema",
+    "schema-org",
+    "json-ld",
+    "structured-data",
+    "rich-results",
+    "validator",
+    "cli",
+    "crawl-cove"
+  ],
+  "author": "Crawl Cove",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CrawlCove/crawlcove-schema-validator.git"
+  },
+  "homepage": "https://crawlcove.com/tools/schema-markup-generator?utm_source=github&utm_medium=crawlcove-schema-validator",
+  "dependencies": {
+    "commander": "^15.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  }
+}
