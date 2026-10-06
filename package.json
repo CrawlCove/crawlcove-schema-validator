@@ -33,9 +33,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/CrawlCove/crawlcove-schema-validator.git"
+    "url": "https://github.com/CrawlCove/schema-markup-validator.git"
   },
-  "homepage": "https://crawlcove.com/tools/schema-markup-generator?utm_source=github&utm_medium=crawlcove-schema-validator",
+  "homepage": "https://crawlcove.com/tools/schema-markup-generator?utm_source=github&utm_medium=schema-markup-validator",
   "dependencies": {
     "commander": "^15.0.0"
   },
