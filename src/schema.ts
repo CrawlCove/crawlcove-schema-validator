@@ -92,7 +92,11 @@ export const RULES: Record<string, TypeRule> = {
   LocalBusiness: { required: ['name', 'address'], recommended: ['telephone', 'openingHoursSpecification', 'geo', 'url', 'image', 'priceRange'] },
   PostalAddress: { required: ['streetAddress', 'addressLocality'], recommended: ['postalCode', 'addressRegion', 'addressCountry'] },
   Person: { required: ['name'], recommended: ['url', 'sameAs', 'jobTitle'] },
-  WebSite: { required: ['name', 'url'], recommended: ['potentialAction'] },
+  // No recommended properties: the only one Google ever asked for on WebSite
+  // was potentialAction (SearchAction) for the sitelinks search box, and Google
+  // retired that feature in November 2024 and removed its documentation. The
+  // markup is harmless but earns nothing, so we no longer suggest adding it.
+  WebSite: { required: ['name', 'url'], recommended: [] },
   WebPage: { required: [], recommended: ['name', 'url'] },
   Event: { required: ['name', 'startDate', 'location'], recommended: ['endDate', 'image', 'description', 'offers', 'performer', 'organizer', 'eventStatus', 'eventAttendanceMode'] },
   Recipe: { required: ['name', 'image'], recommended: ['author', 'datePublished', 'description', 'prepTime', 'cookTime', 'totalTime', 'recipeYield', 'recipeIngredient', 'recipeInstructions', 'nutrition', 'aggregateRating'] },
@@ -262,7 +266,13 @@ function validateNode(node: Record<string, unknown>, block: number, path: string
     if (r === null) continue
     for (const p of r.rule.required) {
       const alts = p.split('|')
-      if (!alts.some((a) => hasValue(node, a))) into.push({ code: 'missing-required', severity: 'error', block, type: t, message: `${label}: ${t} is missing ${alts.map((a) => `"${a}"`).join(' or ')}, which Google requires${r.via !== t ? ` (rule for ${r.via})` : ''} before it shows a rich result.` })
+      if (!alts.some((a) => hasValue(node, a))) {
+        // Ratings and reviews can only come from real users: an invented
+        // aggregateRating is a policy violation, not a fix, so say so rather
+        // than let CI pressure someone into fabricating one.
+        const tail = alts.includes('aggregateRating') ? ' Only add one built from genuine ratings or reviews you actually hold; until then this error simply means the page is not eligible for that rich result.' : ''
+        into.push({ code: 'missing-required', severity: 'error', block, type: t, message: `${label}: ${t} is missing ${alts.map((a) => `"${a}"`).join(' or ')}, which Google requires${r.via !== t ? ` (rule for ${r.via})` : ''} before it shows a rich result.${tail}` })
+      }
     }
     // Recommended properties are only judged on top-level nodes: an author's
     // Person or a breadcrumb's last ListItem is not the entity Google is

@@ -55,6 +55,13 @@ describe('validateBlock (pure)', () => {
     const r = validateBlock(JSON.stringify({ ...ctx, '@type': 'Article', headline: 'H', image: 'https://a.test/i.jpg', datePublished: '2026-01-01', dateModified: '2026-01-02', author: { '@type': 'Person', name: 'A' } }), 0)
     expect(r.findings).toEqual([])
   })
+  it('does not recommend potentialAction on WebSite (sitelinks search box retired by Google, Nov 2024)', () => {
+    const r = validateBlock(JSON.stringify({ ...ctx, '@type': 'WebSite', name: 'Crawl Cove', url: 'https://crawlcove.com/' }), 0)
+    expect(r.findings).toEqual([])
+    const sw = validateBlock(JSON.stringify({ ...ctx, '@type': 'SoftwareApplication', name: 'x', offers: { '@type': 'Offer', price: '1.00', priceCurrency: 'GBP' }, applicationCategory: 'BusinessApplication', operatingSystem: 'Windows', image: 'https://a.test/i.png' }), 0)
+    expect(codes(sw)).toEqual(['missing-required'])
+    expect(sw.findings[0].message).toContain('genuine ratings')
+  })
   it('accepts either alternative of an a|b requirement', () => {
     const logo = validateBlock(JSON.stringify({ ...ctx, '@type': 'Organization', name: 'X', url: 'https://a.test', logo: { '@type': 'ImageObject', url: 'https://a.test/l.png' }, sameAs: ['https://x.test/a'], contactPoint: { '@type': 'ContactPoint', contactType: 'sales' } }), 0)
     expect(logo.findings).toEqual([])

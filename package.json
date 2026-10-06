@@ -1,6 +1,6 @@
 {
   "name": "crawlcove-schema-validator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Schema.org / JSON-LD validator CLI: extract every JSON-LD block from a page, parse it, and check the properties Google's rich results require for Article, Product, FAQPage, BreadcrumbList, LocalBusiness, Event, Recipe, JobPosting and more.",
   "type": "module",
   "bin": {
