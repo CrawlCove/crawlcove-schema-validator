@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.2 — 2026-10-09
+
+- `JobPosting` no longer requires `jobLocation` when the job is fully remote.
+  Google: "The jobLocation property isn't required if applicantLocationRequirements
+  is present", so a posting with `jobLocationType: TELECOMMUTE` plus
+  `applicantLocationRequirements` now passes. A posting with neither still errors,
+  and one with `applicantLocationRequirements` but no `TELECOMMUTE` is told Google
+  requires the type for a remote job.
+- `PostalAddress` rules now depend on the type that owns the address. Inside a
+  `JobPosting`, only `addressCountry` is required (Google's one stated must);
+  a city-only office address passes. Elsewhere (LocalBusiness, Event) Google marks
+  no sub-property required, so a street-and-locality-free address is a
+  `thin-address` warning instead of a `missing-required` error.
+- Both were false positives reported against the JSON-LD that
+  crawlcove.com/tools/schema-markup-generator builds for its JobPosting type.
+
 ## 1.0.1 — 2026-10-06
 
 - `WebSite` no longer gets a `missing-recommended` warning for `potentialAction`.

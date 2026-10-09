@@ -90,7 +90,11 @@ export const RULES: Record<string, TypeRule> = {
   HowToStep: { required: ['text'], recommended: ['name', 'image', 'url'] },
   Organization: { required: ['name'], recommended: ['url', 'logo', 'sameAs', 'contactPoint'] },
   LocalBusiness: { required: ['name', 'address'], recommended: ['telephone', 'openingHoursSpecification', 'geo', 'url', 'image', 'priceRange'] },
-  PostalAddress: { required: ['streetAddress', 'addressLocality'], recommended: ['postalCode', 'addressRegion', 'addressCountry'] },
+  // Google marks no PostalAddress sub-property required for LocalBusiness or
+  // Event ("include as many properties as possible"); JobPosting is the one
+  // type whose address must carry addressCountry. Both are shape checks in
+  // validateNode, keyed on the top-level type that owns the address.
+  PostalAddress: { required: [], recommended: ['streetAddress', 'addressLocality', 'postalCode', 'addressRegion', 'addressCountry'] },
   Person: { required: ['name'], recommended: ['url', 'sameAs', 'jobTitle'] },
   // No recommended properties: the only one Google ever asked for on WebSite
   // was potentialAction (SearchAction) for the sitelinks search box, and Google
@@ -100,7 +104,9 @@ export const RULES: Record<string, TypeRule> = {
   WebPage: { required: [], recommended: ['name', 'url'] },
   Event: { required: ['name', 'startDate', 'location'], recommended: ['endDate', 'image', 'description', 'offers', 'performer', 'organizer', 'eventStatus', 'eventAttendanceMode'] },
   Recipe: { required: ['name', 'image'], recommended: ['author', 'datePublished', 'description', 'prepTime', 'cookTime', 'totalTime', 'recipeYield', 'recipeIngredient', 'recipeInstructions', 'nutrition', 'aggregateRating'] },
-  JobPosting: { required: ['title', 'description', 'datePosted', 'hiringOrganization', 'jobLocation'], recommended: ['validThrough', 'baseSalary', 'employmentType', 'identifier'] },
+  // jobLocation is required unless the job is fully remote (jobLocationType
+  // TELECOMMUTE + applicantLocationRequirements): a shape check in validateNode.
+  JobPosting: { required: ['title', 'description', 'datePosted', 'hiringOrganization'], recommended: ['validThrough', 'baseSalary', 'employmentType', 'identifier'] },
   VideoObject: { required: ['name', 'thumbnailUrl', 'uploadDate'], recommended: ['description', 'duration', 'contentUrl', 'embedUrl'] },
   SoftwareApplication: { required: ['name', 'offers', 'aggregateRating|review'], recommended: ['applicationCategory', 'operatingSystem', 'image'] },
   Course: { required: ['name', 'description', 'provider'], recommended: [] },
@@ -241,10 +247,14 @@ function ruleFor(type: string): { rule: TypeRule; via: string } | null {
 }
 
 /** Validate one node and, recursively, the nodes nested in its properties. Pure. */
-function validateNode(node: Record<string, unknown>, block: number, path: string, into: Finding[], depth = 0): void {
+function validateNode(node: Record<string, unknown>, block: number, path: string, into: Finding[], depth = 0, ownerIn: string | null = null): void {
   if (depth > 8) return
   const types = typesOf(node)
   const label = path || '(top level)'
+  // The rule type of the top-level node this one sits inside (JobPosting,
+  // LocalBusiness, Event…): nested shapes such as PostalAddress are judged by
+  // what Google asks of the entity they belong to, not in isolation.
+  const owner = depth === 0 ? (types.map((t) => ruleFor(t)?.via).find((v): v is string => typeof v === 'string') ?? null) : ownerIn
   // A bare reference {"@id": "..."} is a pointer, not a node — nothing to validate.
   if (types.length === 0) {
     if (!(Object.keys(node).length === 1 && '@id' in node)) {
@@ -292,7 +302,7 @@ function validateNode(node: Record<string, unknown>, block: number, path: string
     const values = Array.isArray(value) ? value : [value]
     for (const v of values) {
       if (isNode(v)) {
-        validateNode(v, block, childPath, into, depth + 1)
+        validateNode(v, block, childPath, into, depth + 1, owner)
         continue
       }
       if (typeof v !== 'string') continue
@@ -306,6 +316,22 @@ function validateNode(node: Record<string, unknown>, block: number, path: string
     }
   }
   // Shape checks that need the parent: an FAQ with no Question children, a breadcrumb with no positions.
+  if (types.includes('JobPosting')) {
+    // Google: "The jobLocation property isn't required if applicantLocationRequirements
+    // is present", and a fully remote job "must use jobLocationType" (TELECOMMUTE).
+    const hasLocation = hasValue(node, 'jobLocation')
+    const hasApplicantLocation = hasValue(node, 'applicantLocationRequirements')
+    const locationType = typeof node.jobLocationType === 'string' ? node.jobLocationType.trim() : ''
+    if (!hasLocation && !hasApplicantLocation) into.push({ code: 'missing-required', severity: 'error', block, type: 'JobPosting', message: `${label}: JobPosting is missing "jobLocation", which Google requires before it shows a rich result, unless the job is fully remote (then set "jobLocationType": "TELECOMMUTE" and "applicantLocationRequirements" instead).` })
+    else if (!hasLocation && locationType !== 'TELECOMMUTE') into.push({ code: 'missing-required', severity: 'error', block, type: 'JobPosting', message: `${label}: JobPosting has "applicantLocationRequirements" but no "jobLocation", so it is a remote job and Google requires "jobLocationType": "TELECOMMUTE".` })
+  }
+  if (types.includes('PostalAddress') && depth > 0) {
+    if (owner === 'JobPosting') {
+      if (!hasValue(node, 'addressCountry')) into.push({ code: 'missing-required', severity: 'error', block, type: 'PostalAddress', message: `${label}: a JobPosting address must include "addressCountry" (Google requires it; street, locality, region and postcode are recommended).` })
+    } else if (!hasValue(node, 'streetAddress') && !hasValue(node, 'addressLocality')) {
+      into.push({ code: 'thin-address', severity: 'warning', block, type: 'PostalAddress', message: `${label}: address has neither "streetAddress" nor "addressLocality"; Google asks for as full an address as possible.` })
+    }
+  }
   if (types.includes('FAQPage')) {
     const qs = (Array.isArray(node.mainEntity) ? node.mainEntity : [node.mainEntity]).filter(isNode)
     if (hasValue(node, 'mainEntity') && qs.some((q) => !typesOf(q).includes('Question'))) into.push({ code: 'wrong-nested-type', severity: 'error', block, type: 'FAQPage', message: `${label}: every mainEntity of an FAQPage must be a Question with an acceptedAnswer.` })

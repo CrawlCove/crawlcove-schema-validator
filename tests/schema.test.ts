@@ -70,6 +70,27 @@ describe('validateBlock (pure)', () => {
     const none = validateBlock(JSON.stringify({ ...ctx, '@type': 'SoftwareApplication', name: 'X', offers: { '@type': 'Offer', price: '1', priceCurrency: 'GBP' }, applicationCategory: 'x', operatingSystem: 'y', image: 'https://a.test/i.png' }), 0)
     expect(none.findings.map((f) => f.message)).toEqual([expect.stringContaining('"aggregateRating" or "review"')])
   })
+  it('JobPosting: jobLocation is not required for a fully remote job, and a city-only office address needs only addressCountry', () => {
+    // The shape /tools/schema-markup-generator emits for "Fully remote" (jobLocation pruned, TELECOMMUTE + applicant country).
+    const job = { ...ctx, '@type': 'JobPosting', title: 'SEO lead', description: '<p>Run audits.</p>', datePosted: '2026-10-09', validThrough: '2026-11-09', employmentType: 'FULL_TIME', hiringOrganization: { '@type': 'Organization', name: 'Crawl Cove', sameAs: 'https://crawlcove.com', logo: 'https://crawlcove.com/l.png' }, identifier: { '@type': 'PropertyValue', name: 'Crawl Cove', value: '42' }, baseSalary: { '@type': 'MonetaryAmount', currency: 'GBP', value: { '@type': 'QuantitativeValue', value: 40000, unitText: 'YEAR' } }, directApply: true }
+    const remote = validateBlock(JSON.stringify({ ...job, jobLocationType: 'TELECOMMUTE', applicantLocationRequirements: { '@type': 'Country', name: 'United Kingdom' } }), 0)
+    expect(remote.findings).toEqual([])
+    const cityOnly = validateBlock(JSON.stringify({ ...job, jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressLocality: 'Bristol', addressCountry: 'GB' } } }), 0)
+    expect(cityOnly.findings).toEqual([])
+    const noCountry = validateBlock(JSON.stringify({ ...job, jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', streetAddress: '1 St', addressLocality: 'Bristol', postalCode: 'BS1 1AA' } } }), 0)
+    expect(noCountry.findings.map((f) => [f.code, f.message])).toEqual([['missing-required', expect.stringContaining('"addressCountry"')]])
+    const onsiteNoLocation = validateBlock(JSON.stringify(job), 0)
+    expect(onsiteNoLocation.findings.map((f) => [f.code, f.message])).toEqual([['missing-required', expect.stringContaining('"jobLocation"')]])
+    expect(onsiteNoLocation.findings[0].message).toContain('TELECOMMUTE')
+    const remoteNoType = validateBlock(JSON.stringify({ ...job, applicantLocationRequirements: { '@type': 'Country', name: 'United Kingdom' } }), 0)
+    expect(remoteNoType.findings.map((f) => [f.code, f.message])).toEqual([['missing-required', expect.stringContaining('"jobLocationType"')]])
+  })
+  it('PostalAddress outside a JobPosting: a street-and-locality-free address is a warning, not an error', () => {
+    const thin = validateBlock(JSON.stringify({ ...ctx, '@type': 'Dentist', name: 'X', address: { '@type': 'PostalAddress', postalCode: 'BS1', addressCountry: 'GB' }, telephone: '1', openingHoursSpecification: [{ '@type': 'OpeningHoursSpecification' }], geo: { '@type': 'GeoCoordinates' }, url: 'https://a.test', image: 'https://a.test/i.jpg', priceRange: '££' }), 0)
+    expect(thin.findings.map((f) => [f.code, f.severity])).toEqual([['thin-address', 'warning']])
+    const city = validateBlock(JSON.stringify({ ...ctx, '@type': 'Festival', name: 'Fest', startDate: '2026-07-01', location: { '@type': 'Place', name: 'The Downs', address: { '@type': 'PostalAddress', addressLocality: 'Bristol', addressCountry: 'GB' } }, endDate: '2026-07-02', image: 'https://a.test/i.jpg', description: 'd', offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP' }, performer: { '@type': 'Person', name: 'A' }, organizer: { '@type': 'Organization', name: 'O' }, eventStatus: 'https://schema.org/EventScheduled', eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode' }), 0)
+    expect(city.findings).toEqual([])
+  })
   it('treats {"@id"} references as pointers and accepts durations', () => {
     const r = validateBlock(JSON.stringify({ ...ctx, '@graph': [{ '@type': 'Recipe', name: 'Pie', image: 'https://a.test/p.jpg', author: { '@id': 'https://a.test/#me' }, cookTime: 'PT45M', totalTime: '45 minutes', datePublished: '2026-01-01', description: 'd', prepTime: 'PT10M', recipeYield: '4', recipeIngredient: ['x'], recipeInstructions: 'y', nutrition: { '@type': 'NutritionInformation' }, aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.5', ratingCount: 3, reviewCount: 3, bestRating: 5 } }] }), 0)
     expect(codes(r)).toEqual(['invalid-duration'])
