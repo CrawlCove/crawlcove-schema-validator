@@ -205,11 +205,15 @@ function ruleFor(type) {
     return null;
 }
 /** Validate one node and, recursively, the nodes nested in its properties. Pure. */
-function validateNode(node, block, path, into, depth = 0, ownerIn = null) {
+function validateNode(node, block, path, into, depth = 0, ownerIn = null, under = null) {
     if (depth > 8)
         return;
     const types = typesOf(node);
     const label = path || '(top level)';
+    // Google's review-snippet rules ask only for itemReviewed.name: the thing
+    // being reviewed is named, not described, so a LocalBusiness there needs no
+    // address and a Book no author.
+    const nameOnly = under === 'itemReviewed';
     // The rule type of the top-level node this one sits inside (JobPosting,
     // LocalBusiness, Event…): nested shapes such as PostalAddress are judged by
     // what Google asks of the entity they belong to, not in isolation.
@@ -236,7 +240,7 @@ function validateNode(node, block, path, into, depth = 0, ownerIn = null) {
         const r = ruleFor(t);
         if (r === null)
             continue;
-        for (const p of r.rule.required) {
+        for (const p of nameOnly ? r.rule.required.filter((x) => x === 'name') : r.rule.required) {
             const alts = p.split('|');
             if (!alts.some((a) => hasValue(node, a))) {
                 // Ratings and reviews can only come from real users: an invented
@@ -266,7 +270,7 @@ function validateNode(node, block, path, into, depth = 0, ownerIn = null) {
         const values = Array.isArray(value) ? value : [value];
         for (const v of values) {
             if (isNode(v)) {
-                validateNode(v, block, childPath, into, depth + 1, owner);
+                validateNode(v, block, childPath, into, depth + 1, owner, key);
                 continue;
             }
             if (typeof v !== 'string')

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 — 2026-10-09
+
+- `Review`: the nested `itemReviewed` node now needs only a `name`, as Google's
+  review-snippet rules say. A review of a `LocalBusiness` no longer fails for a
+  missing address, nor a `Book` for a missing author. Found by running every
+  type crawlcove.com/tools/schema-markup-generator builds through the validator.
+
 ## 1.0.2 — 2026-10-09
 
 - `JobPosting` no longer requires `jobLocation` when the job is fully remote.

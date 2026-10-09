@@ -91,6 +91,15 @@ describe('validateBlock (pure)', () => {
     const city = validateBlock(JSON.stringify({ ...ctx, '@type': 'Festival', name: 'Fest', startDate: '2026-07-01', location: { '@type': 'Place', name: 'The Downs', address: { '@type': 'PostalAddress', addressLocality: 'Bristol', addressCountry: 'GB' } }, endDate: '2026-07-02', image: 'https://a.test/i.jpg', description: 'd', offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP' }, performer: { '@type': 'Person', name: 'A' }, organizer: { '@type': 'Organization', name: 'O' }, eventStatus: 'https://schema.org/EventScheduled', eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode' }), 0)
     expect(city.findings).toEqual([])
   })
+  it('Review: itemReviewed needs only a name, whatever its type', () => {
+    const review = (item: Record<string, unknown>) => validateBlock(JSON.stringify({ ...ctx, '@type': 'Review', itemReviewed: item, author: { '@type': 'Person', name: 'A' }, reviewBody: 'Good', datePublished: '2026-10-01', reviewRating: { '@type': 'Rating', ratingValue: '5', bestRating: '5' } }), 0)
+    expect(review({ '@type': 'LocalBusiness', name: 'Shop' }).findings).toEqual([])
+    expect(review({ '@type': 'Book', name: 'B' }).findings).toEqual([])
+    expect(review({ '@type': 'Product' }).findings.map((f) => [f.code, f.message])).toEqual([['missing-required', expect.stringContaining('"name"')]])
+    // Outside itemReviewed the full rule still applies.
+    const org = validateBlock(JSON.stringify({ ...ctx, '@type': 'Organization', name: 'O', url: 'https://a.test', logo: 'https://a.test/l.png', sameAs: ['https://x.test'], contactPoint: { '@type': 'ContactPoint' }, department: { '@type': 'LocalBusiness', name: 'Shop' } }), 0)
+    expect(org.findings.map((f) => f.code)).toEqual(['missing-required'])
+  })
   it('treats {"@id"} references as pointers and accepts durations', () => {
     const r = validateBlock(JSON.stringify({ ...ctx, '@graph': [{ '@type': 'Recipe', name: 'Pie', image: 'https://a.test/p.jpg', author: { '@id': 'https://a.test/#me' }, cookTime: 'PT45M', totalTime: '45 minutes', datePublished: '2026-01-01', description: 'd', prepTime: 'PT10M', recipeYield: '4', recipeIngredient: ['x'], recipeInstructions: 'y', nutrition: { '@type': 'NutritionInformation' }, aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.5', ratingCount: 3, reviewCount: 3, bestRating: 5 } }] }), 0)
     expect(codes(r)).toEqual(['invalid-duration'])
