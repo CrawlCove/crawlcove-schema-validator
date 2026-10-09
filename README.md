@@ -67,6 +67,7 @@ Recommended-property warnings are raised only for top-level nodes, the entities 
 | `missing-recommended` | warning | A property Google lists as recommended; without it the rich result has fewer features or may not be eligible for some placements. | Add it when you have the data. |
 | `wrong-nested-type` | error | An FAQPage's `mainEntity` items must be `Question`s with an `acceptedAnswer`. | Fix the nested type. |
 | `breadcrumb-positions` | error | ListItem positions must run 1, 2, 3 with no gaps. | Renumber. |
+| `thin-address` | warning | A `PostalAddress` outside a `JobPosting` with neither `streetAddress` nor `addressLocality`. Google marks no address sub-property required for LocalBusiness or Event, but asks for as full an address as possible. Inside a `JobPosting`, a missing `addressCountry` is a `missing-required` error instead. | Fill in the address. |
 | `invalid-date` | error | Dates must be ISO 8601 (`2026-09-29` or `2026-09-29T14:30:00+01:00`). `29/09/2026` is ignored. | Reformat. |
 | `invalid-duration` | error | Durations must be ISO 8601 (`PT30M`, `PT1H15M`), not "45 minutes". | Reformat. |
 | `relative-url` | error / warning | URLs in `url`, `image`, `logo`, breadcrumb `item`, `sameAs` and friends must be absolute; a relative `@id` is a warning. | Include scheme and host. |
